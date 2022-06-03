@@ -163,21 +163,21 @@ def get_response_from_cache(
                 unquoted_request_time_ns = urllib.parse.unquote(quoted_request_time_ns)
                 request_time_ns = int(unquoted_request_time_ns)
                 ########################################################
-                quoted_header_content_md5_size_key = cell_list[4]
-                if len(quoted_header_content_md5_size_key) == 0:
+                quoted_key = cell_list[4]
+                if len(quoted_key) == 0:
                     headers = None
                 else:
-                    unquoted_header_content_md5_size_key = urllib.parse.unquote(quoted_header_content_md5_size_key)
+                    unquoted_key = urllib.parse.unquote(quoted_key)
                     # get headers from cache
-                    headers = get_headers_content(unquoted_header_content_md5_size_key)
+                    headers = get_headers_content(unquoted_key)
                 ########################################################
-                quoted_body_content_md5_size_key = cell_list[5]
-                if len(quoted_body_content_md5_size_key) == 0:
+                quoted_key = cell_list[5]
+                if len(quoted_key) == 0:
                     body_content_bs = None
                 else:
-                    unquoted_body_content_md5_size_key = urllib.parse.unquote(quoted_body_content_md5_size)
+                    unquoted_key = urllib.parse.unquote(quoted_key)
                     # get body from cache
-                    body_content_bs = get_body_content(unquoted_body_content_md5_size_key)
+                    body_content_bs = get_body_content(unquoted_key)
                 ########################################################
 
                 return {
@@ -245,22 +245,22 @@ def store_response(
     quoted_request_time_ns = urllib.parse.quote(str(request_time_ns))
     quoted_status_code = urllib.parse.quote(str(status_code))
     if header_content_md5_size_key is None:
-        quoted_header_content_md5_size_key = ''
+        quoted_key = ''
     else:
-        quoted_header_content_md5_size_key = urllib.parse.quote(header_content_md5_size_key)
+        quoted_key = urllib.parse.quote(header_content_md5_size_key)
 
     if body_content_md5_size_key is None:
-        quoted_body_content_md5_size_key = ''
+        quoted_key = ''
     else:
-        quoted_body_content_md5_size_key = urllib.parse.quote(body_content_md5_size_key)
+        quoted_key = urllib.parse.quote(body_content_md5_size_key)
 
     cache_log_line_content = '\t'.join([
         quoted_url,
         quoted_method,
         quoted_status_code,
         quoted_request_time_ns,
-        quoted_header_content_md5_size_key,
-        quoted_body_content_md5_size_key,
+        quoted_key,
+        quoted_key,
     ])
 
     cache_log_line_content = f'{cache_log_line_content}'
