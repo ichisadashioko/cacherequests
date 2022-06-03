@@ -9,13 +9,27 @@ import stat
 import gzip
 import hashlib
 import pickle
+import sys
 
 import requests
 
 ########################################################################
 ### CACHE MANAGEMENT ###################################################
-ROOT = os.path.dirname(os.path.realpath(__file__))
-CACHE_ROOT_DIR = os.path.join(ROOT, 'cache')
+ENV_VAR_NAME_CACHE_DIR = 'cacherequests_cache_dir'
+# check for environment variable
+if ENV_VAR_NAME_CACHE_DIR in os.environ:
+    print(f'Using cache directory from environment variable {ENV_VAR_NAME_CACHE_DIR}')
+else:
+    print(f'warning: Using cache directory from default value')
+    ROOT = os.path.dirname(os.path.realpath(__file__))
+    CACHE_ROOT_DIR = os.path.join(ROOT, 'cache')
+
+CACHE_ROOT_DIR = os.environ[ENV_VAR_NAME_CACHE_DIR]
+if not os.path.exists(CACHE_ROOT_DIR):
+    os.makedirs(CACHE_ROOT_DIR)
+if not os.path.isdir(CACHE_ROOT_DIR):
+    raise Exception(f'{CACHE_ROOT_DIR} is not a directory!')
+
 HEADER_CONTENT_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'headers')
 BODY_CONTENT_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'bodies')
 REQUEST_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'requests')
