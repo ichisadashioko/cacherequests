@@ -305,7 +305,7 @@ def store_response(
     latest_log_filepath = latest_child_file_log['filepath']
     latest_log_filesize = os.path.getsize(latest_log_filepath)
 
-    if (latest_log_filesize + base_log_content_size) > MAIN_DATABASE_CACHE_MAX_SIZE:
+    if (latest_log_filesize + base_log_content_size) > MAX_CACHE_SIZE_BYTES:
         # the latest cache file is too large
         # make a new cache file
         cache_filepath = give_me_a_new_cache_filepath()
@@ -325,7 +325,7 @@ def store_response(
             outfile.write(cache_log_line_content_bs)
     else:
         # re check the size sum with 1 more byte
-        if (latest_log_filesize + base_log_content_size + 1) > MAIN_DATABASE_CACHE_MAX_SIZE:
+        if (latest_log_filesize + base_log_content_size + 1) > MAX_CACHE_SIZE_BYTES:
             # the latest cache file is too large
             # make a new cache file
             cache_filepath = give_me_a_new_cache_filepath()
