@@ -167,7 +167,7 @@ def get_response_from_cache(
                 if len(quoted_header_content_md5_size_key) == 0:
                     headers = None
                 else:
-                    unquoted_header_content_md5_size_key = urllib.parse.unquote(quoted_header_content_md5_size)
+                    unquoted_header_content_md5_size_key = urllib.parse.unquote(quoted_header_content_md5_size_key)
                     # get headers from cache
                     headers = get_headers_content(unquoted_header_content_md5_size_key)
                 ########################################################
