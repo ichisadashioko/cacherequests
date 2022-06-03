@@ -52,6 +52,7 @@ def store_header_content(
         return None
 
     header_content_bs = pickle.dumps(header_list)
+    header_content_size = len(header_content_bs)
 
     header_content_md5_hash = hashlib.md5(header_content_bs).hexdigest()
     header_content_md5_size_key = f'{header_content_md5_hash}-{header_content_size}'
