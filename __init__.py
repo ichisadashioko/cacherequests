@@ -273,7 +273,7 @@ def store_response(
     if not os.path.isdir(MAIN_DATABASE_CACHE_DIR):
         raise Exception(f'{MAIN_DATABASE_CACHE_DIR} is not a directory')
 
-        child_filename_list = os.listdir(MAIN_DATABASE_CACHE_DIR)
+    child_filename_list = os.listdir(MAIN_DATABASE_CACHE_DIR)
     child_file_log_list = []
     for child_filename in child_filename_list:
         child_filepath = os.path.join(MAIN_DATABASE_CACHE_DIR, child_filename)
