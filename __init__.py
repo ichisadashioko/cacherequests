@@ -370,7 +370,8 @@ def wrap_requests(
     try:
         if not force:
             cache_obj = get_response_from_cache(url, method, verbose)
-            return cache_obj
+            if cache_obj is not None:
+                return cache_obj
 
         response = requests.request(method, url, timeout=timeout)
         request_time_ns = time.time_ns()
