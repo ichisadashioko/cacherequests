@@ -19,12 +19,12 @@ ENV_VAR_NAME_CACHE_DIR = 'cacherequests_cache_dir'
 # check for environment variable
 if ENV_VAR_NAME_CACHE_DIR in os.environ:
     print(f'Using cache directory from environment variable {ENV_VAR_NAME_CACHE_DIR}')
+    CACHE_ROOT_DIR = os.environ[ENV_VAR_NAME_CACHE_DIR]
 else:
     print(f'warning: Using cache directory from default value')
     ROOT = os.path.dirname(os.path.realpath(__file__))
     CACHE_ROOT_DIR = os.path.join(ROOT, 'cache')
 
-CACHE_ROOT_DIR = os.environ[ENV_VAR_NAME_CACHE_DIR]
 if not os.path.exists(CACHE_ROOT_DIR):
     os.makedirs(CACHE_ROOT_DIR)
 if not os.path.isdir(CACHE_ROOT_DIR):
