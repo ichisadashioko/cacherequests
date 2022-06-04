@@ -54,8 +54,8 @@ def store_header_content(
     header_content_size = len(header_content_bs)
 
     header_content_md5_hash = hashlib.md5(header_content_bs).hexdigest()
-    header_content_md5_size_key = f'{header_content_md5_hash}-{header_content_size}'
-    cache_filename = f'{header_content_md5_size_key}.pickle.gzip'
+    header_cache_key = f'{header_content_md5_hash}-{header_content_size}'
+    cache_filename = f'{header_cache_key}.pickle.gzip'
     cache_filepath = os.path.join(HEADER_CONTENT_CACHE_DIR, cache_filename)
 
     if not os.path.exists(cache_filepath):
@@ -64,7 +64,7 @@ def store_header_content(
         with gzip.open(cache_filepath, 'wb') as outfile:
             outfile.write(header_content_bs)
 
-    return header_content_md5_size_key
+    return header_cache_key
 
 
 def get_headers_content(md5_size_key: str):
@@ -214,8 +214,8 @@ def store_body_content(
         return None
 
     body_content_md5_hash = hashlib.md5(body_content_bs).hexdigest()
-    body_content_md5_size_key = f'{body_content_md5_hash}-{body_content_size}'
-    cache_filename = f'{body_content_md5_size_key}.gzip'
+    body_cache_key = f'{body_content_md5_hash}-{body_content_size}'
+    cache_filename = f'{body_cache_key}.gzip'
     cache_filepath = os.path.join(BODY_CONTENT_CACHE_DIR, cache_filename)
 
     if not os.path.exists(cache_filepath):
@@ -225,7 +225,7 @@ def store_body_content(
         with gzip.open(cache_filepath, 'wb') as outfile:
             outfile.write(body_content_bs)
 
-    return body_content_md5_size_key
+    return body_cache_key
 
 
 def store_response(
@@ -236,30 +236,30 @@ def store_response(
     headers: dict,
     body_content_bs: bytes,
 ):
-    header_content_md5_size_key = store_header_content(headers)
-    body_content_md5_size_key = store_body_content(body_content_bs)
+    header_cache_key = store_header_content(headers)
+    body_cache_key = store_body_content(body_content_bs)
 
     quoted_url = urllib.parse.quote(url)
     quoted_method = urllib.parse.quote(method)
     quoted_request_time_ns = urllib.parse.quote(str(request_time_ns))
     quoted_status_code = urllib.parse.quote(str(status_code))
-    if header_content_md5_size_key is None:
-        quoted_key = ''
+    if header_cache_key is None:
+        header_cache_key_quoted = ''
     else:
-        quoted_key = urllib.parse.quote(header_content_md5_size_key)
+        header_cache_key_quoted = urllib.parse.quote(header_cache_key)
 
-    if body_content_md5_size_key is None:
-        quoted_key = ''
+    if body_cache_key is None:
+        body_cache_key_quoted = ''
     else:
-        quoted_key = urllib.parse.quote(body_content_md5_size_key)
+        body_cache_key_quoted = urllib.parse.quote(body_cache_key)
 
     cache_log_line_content = '\t'.join([
         quoted_url,
         quoted_method,
         quoted_status_code,
         quoted_request_time_ns,
-        quoted_key,
-        quoted_key,
+        header_cache_key_quoted,
+        body_cache_key_quoted,
     ])
 
     cache_log_line_content = f'{cache_log_line_content}'
