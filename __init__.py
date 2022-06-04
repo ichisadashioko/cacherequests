@@ -32,7 +32,6 @@ if not os.path.isdir(CACHE_ROOT_DIR):
 
 HEADER_CONTENT_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'headers')
 BODY_CONTENT_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'bodies')
-REQUEST_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'requests')
 
 MAIN_DATABASE_CACHE_DIR = os.path.join(CACHE_ROOT_DIR, 'main_database')
 MAX_CACHE_SIZE_BYTES = 16777216  # 16MB
