@@ -155,12 +155,18 @@ def get_response_from_cache(
                     continue
                 ########################################################
                 quoted_status_code = cell_list[2]
-                unquoted_status_code = urllib.parse.unquote(quoted_status_code)
-                status_code = int(unquoted_status_code)
+                if len(quoted_status_code) == 0:
+                    status_code = None
+                else:
+                    unquoted_status_code = urllib.parse.unquote(quoted_status_code)
+                    status_code = int(unquoted_status_code)
                 ########################################################
                 quoted_request_time_ns = cell_list[3]
-                unquoted_request_time_ns = urllib.parse.unquote(quoted_request_time_ns)
-                request_time_ns = int(unquoted_request_time_ns)
+                if len(quoted_request_time_ns) == 0:
+                    request_time_ns = None
+                else:
+                    unquoted_request_time_ns = urllib.parse.unquote(quoted_request_time_ns)
+                    request_time_ns = int(unquoted_request_time_ns)
                 ########################################################
                 quoted_key = cell_list[4]
                 if len(quoted_key) == 0:
