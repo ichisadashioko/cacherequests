@@ -40,6 +40,9 @@ MAX_CACHE_SIZE_BYTES = 16777216  # 16MB
 def store_header_content(
     headers: dict,
 ):
+    if headers is None:
+        return None
+
     key_list = list(headers.keys())
     key_list.sort()
 
@@ -215,6 +218,9 @@ def give_me_a_new_cache_filepath(max_count=65536):
 def store_body_content(
     body_content_bs: bytes,
 ):
+    if body_content_bs is None:
+        return None
+
     body_content_size = len(body_content_bs)
     if body_content_size == 0:
         return None
