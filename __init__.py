@@ -140,6 +140,7 @@ def get_response_from_cache(
             lines = content_str.split('\n')
             # filter empty lines
             lines = [line for line in lines if line]
+            lines.reverse()
 
             for line in lines:
                 cell_list = line.split('\t')
