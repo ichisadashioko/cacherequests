@@ -414,6 +414,7 @@ def wrap_requests(
             'status_code': response.status_code,
             'headers': response.headers,
             'content_bs': response.content,
+            'request_time_ns': request_time_ns,
         }
     except Exception as ex:
         stacktrace = traceback.format_exc()
