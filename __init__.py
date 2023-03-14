@@ -424,6 +424,8 @@ def wrap_requests(
 
         raise
 
+########################################################################
+
 
 def store_header_content_return_cache_data_filepath(
     headers: dict,
@@ -507,6 +509,7 @@ def store_response_return_cache_data_filepath(
     headers: dict,
     body_content_bs: bytes,
     cache_metadata_write_filepath: str,
+    proxy_url=None,
 ):
     retval = {
         'headers_cache_filepath': None,
@@ -526,22 +529,28 @@ def store_response_return_cache_data_filepath(
     quoted_request_time_ns = urllib.parse.quote(str(request_time_ns))
     quoted_status_code = urllib.parse.quote(str(status_code))
     if header_cache_key is None:
-        header_cache_key_quoted = ''
+        quoted_header_cache_key = ''
     else:
-        header_cache_key_quoted = urllib.parse.quote(header_cache_key)
+        quoted_header_cache_key = urllib.parse.quote(header_cache_key)
 
     if body_cache_key is None:
-        body_cache_key_quoted = ''
+        quoted_body_cache_key = ''
     else:
-        body_cache_key_quoted = urllib.parse.quote(body_cache_key)
+        quoted_body_cache_key = urllib.parse.quote(body_cache_key)
+
+    if proxy_url is None:
+        quoted_proxy_url = ''
+    else:
+        quoted_proxy_url = urllib.parse.quote(proxy_url)
 
     cache_log_line_content = '\t'.join([
         quoted_url,
         quoted_method,
         quoted_status_code,
         quoted_request_time_ns,
-        header_cache_key_quoted,
-        body_cache_key_quoted,
+        quoted_header_cache_key,
+        quoted_body_cache_key,
+        quoted_proxy_url,
     ])
 
     cache_log_line_content = f'{cache_log_line_content}\n'
@@ -567,6 +576,7 @@ def get_response_from_cache_return_cache_data_filepath(
         'request_time_ns': None,
         'headers_cache_filepath': None,
         'body_cache_filepath': None,
+        'proxy_url': None,
     }
 
     cache_metadata_file_info_list = []
@@ -642,6 +652,11 @@ def get_response_from_cache_return_cache_data_filepath(
                     )
                     retval['body_cache_filepath'] = body_cache_filepath
                 ########################################################
+                if len(cell_list) > 6:
+                    quoted_proxy_url = cell_list[6]
+                    if len(quoted_proxy_url) > 0:
+                        unquoted_proxy_url = urllib.parse.unquote(quoted_proxy_url)
+                        retval['proxy_url'] = unquoted_proxy_url
 
                 return retval
         except Exception as ex:
@@ -661,58 +676,56 @@ def wrap_requests_return_cache_data_filepath(
     timeout=30,
     verbose=True,
     force=False,
-    proxy_dict=None,
+    proxy_url=None,
 ):
-    try:
-        retval = {
-            'url': url,
-            'method': method,
-            'status_code': None,
-            'request_time_ns': None,
-            'headers_cache_filepath': None,
-            'body_cache_filepath': None,
-        }
+    retval = {
+        'url': url,
+        'method': method,
+        'status_code': None,
+        'request_time_ns': None,
+        'headers_cache_filepath': None,
+        'body_cache_filepath': None,
+        'proxy_url': proxy_url,
+    }
 
-        if not force:
-            cache_obj = get_response_from_cache_return_cache_data_filepath(
-                url=url,
-                cache_metadata_filepath_list=cache_metadata_filepath_list,
-                method=method,
-                verbose=verbose,
-            )
-
-            if cache_obj is not None:
-                cache_obj['from_cache'] = True
-                return cache_obj
-
-        if proxy_dict is None:
-            response = requests.request(method, url, timeout=timeout)
-        else:
-            response = requests.request(method, url, timeout=timeout, proxies=proxy_dict)
-
-        retval['status_code'] = response.status_code
-
-        request_time_ns = time.time_ns()
-        retval['request_time_ns'] = request_time_ns
-
-        _retval = store_response_return_cache_data_filepath(
+    if not force:
+        cache_obj = get_response_from_cache_return_cache_data_filepath(
             url=url,
+            cache_metadata_filepath_list=cache_metadata_filepath_list,
             method=method,
-            request_time_ns=request_time_ns,
-            status_code=response.status_code,
-            headers=response.headers,
-            body_content_bs=response.content,
-            cache_metadata_write_filepath=cache_metadata_write_filepath,
+            verbose=verbose,
         )
 
-        retval['headers_cache_filepath'] = _retval['headers_cache_filepath']
-        retval['body_cache_filepath'] = _retval['body_cache_filepath']
+        if cache_obj is not None:
+            cache_obj['from_cache'] = True
+            return cache_obj
 
-        return retval
-    except Exception as ex:
-        stacktrace = traceback.format_exc()
-        if verbose:
-            print(ex)
-            print(stacktrace)
+    proxy_dict = None
+    if proxy_url is not None:
+        proxy_dict = {
+            'http': proxy_url,
+            'https': proxy_url,
+        }
 
-        raise
+    response = requests.request(method, url, timeout=timeout, proxies=proxy_dict)
+
+    retval['status_code'] = response.status_code
+
+    request_time_ns = time.time_ns()
+    retval['request_time_ns'] = request_time_ns
+
+    _retval = store_response_return_cache_data_filepath(
+        url=url,
+        method=method,
+        request_time_ns=request_time_ns,
+        status_code=response.status_code,
+        headers=response.headers,
+        body_content_bs=response.content,
+        cache_metadata_write_filepath=cache_metadata_write_filepath,
+        proxy_url=proxy_url,
+    )
+
+    retval['headers_cache_filepath'] = _retval['headers_cache_filepath']
+    retval['body_cache_filepath'] = _retval['body_cache_filepath']
+
+    return retval
