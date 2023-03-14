@@ -423,3 +423,296 @@ def wrap_requests(
             print(stacktrace)
 
         raise
+
+
+def store_header_content_return_cache_data_filepath(
+    headers: dict,
+):
+    retval = {
+        'key': None,
+        'filepath': None,
+    }
+
+    if headers is None:
+        return retval
+
+    key_list = list(headers.keys())
+    key_list.sort()
+
+    header_list = []
+    for key in key_list:
+        header_list.append((key, headers[key]))
+
+    if len(header_list) == 0:
+        return None
+
+    header_content_bs = pickle.dumps(header_list)
+    header_content_size = len(header_content_bs)
+
+    header_content_md5_hash = hashlib.md5(header_content_bs).hexdigest()
+    header_cache_key = f'{header_content_md5_hash}-{header_content_size}'
+    cache_filename = f'{header_cache_key}.pickle.gzip'
+    cache_filepath = os.path.join(HEADER_CONTENT_CACHE_DIR, cache_filename)
+
+    retval['key'] = header_cache_key
+    retval['filepath'] = cache_filepath
+
+    if not os.path.exists(cache_filepath):
+        if not os.path.exists(HEADER_CONTENT_CACHE_DIR):
+            os.makedirs(HEADER_CONTENT_CACHE_DIR)
+        with gzip.open(cache_filepath, 'wb') as outfile:
+            outfile.write(header_content_bs)
+
+    return retval
+
+
+def store_body_content_return_cache_data_filepath(
+    body_content_bs: bytes,
+):
+    retval = {
+        'key': None,
+        'filepath': None,
+    }
+
+    if body_content_bs is None:
+        return retval
+
+    body_content_size = len(body_content_bs)
+    if body_content_size == 0:
+        return retval
+
+    body_content_md5_hash = hashlib.md5(body_content_bs).hexdigest()
+    body_cache_key = f'{body_content_md5_hash}-{body_content_size}'
+    cache_filename = f'{body_cache_key}.gzip'
+    cache_filepath = os.path.join(BODY_CONTENT_CACHE_DIR, cache_filename)
+
+    retval['key'] = body_cache_key
+    retval['filepath'] = cache_filepath
+
+    if not os.path.exists(cache_filepath):
+        if not os.path.exists(BODY_CONTENT_CACHE_DIR):
+            os.makedirs(BODY_CONTENT_CACHE_DIR)
+
+        with gzip.open(cache_filepath, 'wb') as outfile:
+            outfile.write(body_content_bs)
+
+    return retval
+
+
+def store_response_return_cache_data_filepath(
+    url: str,
+    method: str,
+    request_time_ns: int,
+    status_code: int,
+    headers: dict,
+    body_content_bs: bytes,
+    cache_metadata_write_filepath: str,
+):
+    retval = {
+        'headers_cache_filepath': None,
+        'body_cache_filepath': None,
+    }
+
+    _retval = store_header_content_return_cache_data_filepath(headers)
+    header_cache_key = _retval['key']
+    retval['headers_cache_filepath'] = _retval['filepath']
+
+    _retval = store_body_content_return_cache_data_filepath(body_content_bs)
+    body_cache_key = _retval['key']
+    retval['body_cache_filepath'] = _retval['filepath']
+
+    quoted_url = urllib.parse.quote(url)
+    quoted_method = urllib.parse.quote(method)
+    quoted_request_time_ns = urllib.parse.quote(str(request_time_ns))
+    quoted_status_code = urllib.parse.quote(str(status_code))
+    if header_cache_key is None:
+        header_cache_key_quoted = ''
+    else:
+        header_cache_key_quoted = urllib.parse.quote(header_cache_key)
+
+    if body_cache_key is None:
+        body_cache_key_quoted = ''
+    else:
+        body_cache_key_quoted = urllib.parse.quote(body_cache_key)
+
+    cache_log_line_content = '\t'.join([
+        quoted_url,
+        quoted_method,
+        quoted_status_code,
+        quoted_request_time_ns,
+        header_cache_key_quoted,
+        body_cache_key_quoted,
+    ])
+
+    cache_log_line_content = f'{cache_log_line_content}\n'
+    cache_log_line_content_bs = cache_log_line_content.encode('utf-8')
+    del cache_log_line_content
+
+    with open(cache_metadata_write_filepath, 'ab+') as outfile:
+        outfile.write(cache_log_line_content_bs)
+
+    return retval
+
+
+def get_response_from_cache_return_cache_data_filepath(
+    url: str,
+    cache_metadata_filepath_list: list,
+    method='GET',
+    verbose=True,
+):
+    retval = {
+        'url': url,
+        'method': method,
+        'status_code': None,
+        'request_time_ns': None,
+        'headers_cache_filepath': None,
+        'body_cache_filepath': None,
+    }
+
+    cache_metadata_file_info_list = []
+    for metadata_filepath in cache_metadata_filepath_list:
+        file_stat = os.stat(metadata_filepath)
+        if not stat.S_ISREG(file_stat.st_mode):
+            continue
+
+        modified_time_ns = file_stat.st_mtime_ns
+        log_info = {
+            'filename': os.path.basename(metadata_filepath),
+            'filepath': metadata_filepath,
+            'modified_time_ns': modified_time_ns,
+        }
+
+        cache_metadata_file_info_list.append(log_info)
+
+    # sort by modified time with the most recently modified first
+    cache_metadata_file_info_list.sort(key=lambda x: x['modified_time_ns'], reverse=True)
+
+    for log_info in cache_metadata_file_info_list:
+        try:
+            content_bs = open(log_info['filepath'], 'rb').read()
+            content_str = content_bs.decode('utf-8')
+            lines = content_str.split('\n')
+            # filter empty lines
+            lines = [line for line in lines if line]
+            lines.reverse()
+
+            for line in lines:
+                cell_list = line.split('\t')
+                # url, method, status_code, request_time_ns, header_content_md5-size, body_content_md5-size
+                if len(cell_list) < 6:
+                    continue
+                ########################################################
+                quoted_url = cell_list[0]
+                unquoted_url = urllib.parse.unquote(quoted_url)
+                if unquoted_url != url:
+                    continue
+                ########################################################
+                quoted_method = cell_list[1]
+                unquoted_method = urllib.parse.unquote(quoted_method)
+                if unquoted_method != method:
+                    continue
+                ########################################################
+                quoted_status_code = cell_list[2]
+                if len(quoted_status_code) > 0:
+                    unquoted_status_code = urllib.parse.unquote(quoted_status_code)
+                    status_code = int(unquoted_status_code)
+                    retval['status_code'] = status_code
+                ########################################################
+                quoted_request_time_ns = cell_list[3]
+                if len(quoted_request_time_ns) > 0:
+                    unquoted_request_time_ns = urllib.parse.unquote(quoted_request_time_ns)
+                    request_time_ns = int(unquoted_request_time_ns)
+                    retval['request_time_ns'] = request_time_ns
+                ########################################################
+                quoted_key = cell_list[4]
+                if len(quoted_key) > 0:
+                    unquoted_key = urllib.parse.unquote(quoted_key)
+                    headers_cache_filepath = os.path.join(
+                        HEADER_CONTENT_CACHE_DIR,
+                        f'{unquoted_key}.pickle.gzip',
+                    )
+                    retval['headers_cache_filepath'] = headers_cache_filepath
+                ########################################################
+                quoted_key = cell_list[5]
+                if len(quoted_key) > 0:
+                    unquoted_key = urllib.parse.unquote(quoted_key)
+                    body_cache_filepath = os.path.join(
+                        BODY_CONTENT_CACHE_DIR,
+                        f'{unquoted_key}.pickle.gzip',
+                    )
+                    retval['body_cache_filepath'] = body_cache_filepath
+                ########################################################
+
+                return retval
+        except Exception as ex:
+            if verbose:
+                stacktrace = traceback.format_exc()
+                print(ex)
+                print(stacktrace)
+
+    return None
+
+
+def wrap_requests_return_cache_data_filepath(
+    url: str,
+    cache_metadata_filepath_list: list,
+    cache_metadata_write_filepath: str,
+    method='GET',
+    timeout=30,
+    verbose=True,
+    force=False,
+    proxy_dict=None,
+):
+    try:
+        retval = {
+            'url': url,
+            'method': method,
+            'status_code': None,
+            'request_time_ns': None,
+            'headers_cache_filepath': None,
+            'body_cache_filepath': None,
+        }
+
+        if not force:
+            cache_obj = get_response_from_cache_return_cache_data_filepath(
+                url=url,
+                cache_metadata_filepath_list=cache_metadata_filepath_list,
+                method=method,
+                verbose=verbose,
+            )
+
+            if cache_obj is not None:
+                cache_obj['from_cache'] = True
+                return cache_obj
+
+        if proxy_dict is None:
+            response = requests.request(method, url, timeout=timeout)
+        else:
+            response = requests.request(method, url, timeout=timeout, proxies=proxy_dict)
+
+        retval['status_code'] = response.status_code
+
+        request_time_ns = time.time_ns()
+        retval['request_time_ns'] = request_time_ns
+
+        _retval = store_response_return_cache_data_filepath(
+            url=url,
+            method=method,
+            request_time_ns=request_time_ns,
+            status_code=response.status_code,
+            headers=response.headers,
+            body_content_bs=response.content,
+            cache_metadata_write_filepath=cache_metadata_write_filepath,
+        )
+
+        retval['headers_cache_filepath'] = _retval['headers_cache_filepath']
+        retval['body_cache_filepath'] = _retval['body_cache_filepath']
+
+        return retval
+    except Exception as ex:
+        stacktrace = traceback.format_exc()
+        if verbose:
+            print(ex)
+            print(stacktrace)
+
+        raise
